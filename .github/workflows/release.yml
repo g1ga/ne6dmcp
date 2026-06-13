@@ -113,9 +113,46 @@ jobs:
       - name: Notarize + staple
         if: env.MACOS_CERT_P12 != '' && env.APPLE_ID != ''
         run: |
-          xcrun notarytool submit "$PKG" \
-            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
-          xcrun stapler staple "$PKG"
+          set -euo pipefail
+          auth=(--apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD")
+
+          # Submit once (no --wait, so a dropped poll can't kill the upload).
+          submit_json=$(xcrun notarytool submit "$PKG" "${auth[@]}" --output-format json)
+          echo "$submit_json"
+          sub_id=$(printf '%s' "$submit_json" | jq -r '.id')
+          if [ -z "$sub_id" ] || [ "$sub_id" = "null" ]; then
+            echo "::error::Could not get a notarization submission id"; exit 1
+          fi
+          echo "Submission id: $sub_id"
+
+          # Poll with our own loop so transient network errors just retry.
+          # Up to 60 * 30s = 30 min budget.
+          status="In Progress"
+          for i in $(seq 1 60); do
+            info=$(xcrun notarytool info "$sub_id" "${auth[@]}" --output-format json 2>/dev/null || true)
+            status=$(printf '%s' "$info" | jq -r '.status // empty' 2>/dev/null || true)
+            echo "  [poll $i] status: ${status:-<network blip, retrying>}"
+            case "$status" in
+              Accepted) break ;;
+              Invalid|Rejected)
+                echo "::error::Notarization $status — log follows:"
+                xcrun notarytool log "$sub_id" "${auth[@]}" || true
+                exit 1 ;;
+            esac
+            sleep 30
+          done
+
+          if [ "${status:-}" != "Accepted" ]; then
+            echo "::error::Notarization did not reach Accepted within the time budget (last: ${status:-unknown})."
+            xcrun notarytool log "$sub_id" "${auth[@]}" || true
+            exit 1
+          fi
+
+          # Staple the ticket (small retry — this also touches the network).
+          for i in 1 2 3 4 5; do
+            xcrun stapler staple "$PKG" && break || { echo "  staple attempt $i failed, retrying…"; sleep 15; }
+          done
+          xcrun stapler validate "$PKG"
 
       - name: Warn if unsigned
         if: env.MACOS_CERT_P12 == ''
