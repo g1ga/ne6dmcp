@@ -49,6 +49,12 @@ function run(cmd, cmdArgs, opts = {}) {
   return execFileSync(cmd, cmdArgs, { stdio: 'inherit', ...opts });
 }
 
+// npm is a .cmd shim on Windows; Node's execFile can't launch it directly, so
+// route npm through a shell on every platform (harmless on macOS/Linux).
+function npm(cmdArgs, opts = {}) {
+  return execFileSync('npm', cmdArgs, { stdio: 'inherit', shell: true, ...opts });
+}
+
 /** Map our platform/arch to the official Node dist file name + the binary inside it. */
 function nodeDist(platform, arch, version) {
   const v = `v${version}`;
@@ -115,7 +121,7 @@ async function main() {
   // 0. Ensure the app is built and production deps are installed.
   if (!existsSync(join(ROOT, 'dist', 'index.js'))) {
     console.log('dist/ missing — running `npm run build`');
-    run('npm', ['run', 'build'], { cwd: ROOT });
+    npm(['run', 'build'], { cwd: ROOT });
   }
 
   // Stage a clean production node_modules in a temp dir so we never touch the dev tree.
@@ -125,7 +131,7 @@ async function main() {
   copyFileSync(join(ROOT, 'package.json'), join(stage, 'package.json'));
   if (existsSync(join(ROOT, 'package-lock.json'))) copyFileSync(join(ROOT, 'package-lock.json'), join(stage, 'package-lock.json'));
   console.log('  installing production dependencies (npm ci --omit=dev)');
-  run('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund'], { cwd: stage });
+  npm(['ci', '--omit=dev', '--no-audit', '--no-fund'], { cwd: stage });
   pruneMidiPrebuilds(join(stage, 'node_modules'), platform, arch);
 
   // 1. Fresh output tree.
