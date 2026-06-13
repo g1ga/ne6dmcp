@@ -20,35 +20,74 @@ applies, **you** are the ears.
 
 ---
 
-## Quick start (Claude Desktop)
+## Install
 
-You need: a **Nord Stage 4** connected to your computer over **USB**, **Node.js ≥ 18**,
-and **[Claude Desktop](https://claude.ai/download)**. macOS and Linux are supported.
+You need a **Nord Stage 4** connected over **USB** and **[Claude Desktop](https://claude.ai/download)**.
+Pick one of the two install paths below, **then do the [Nord MIDI setup](#set-up-the-nord-for-midi-required-do-this-once)**.
 
-### 1. Get the code and build it
+### Option A — Download an installer (recommended, nothing else to install)
+
+Grab the installer for your OS from the **[Releases page](https://github.com/gbulfon/ns4mcp/releases)**.
+Each one bundles a Node runtime + the app and **configures Claude Desktop for you** —
+no Node, no developer tools, no editing config files.
+
+| OS | Download | Notes |
+|---|---|---|
+| **macOS** | `NS4MCP-<ver>-macos-arm64.pkg` (Apple Silicon) · `…-x64.pkg` (Intel) | Signed & notarized — double-click to install. |
+| **Windows** | `NS4MCP-<ver>-windows-x64-setup.exe` | Installs per-user (no admin). It's **unsigned**, so Windows SmartScreen warns: click **More info → Run anyway**. |
+| **Linux** | `NS4MCP-<ver>-linux-x64.tar.gz` | `tar -xzf` it, then run `./ns4mcp/install.sh`. |
+
+When it finishes, do the Nord setup below and **quit & reopen Claude Desktop**.
+
+<details>
+<summary>How to uninstall</summary>
+
+- **macOS:** `sudo /usr/local/ns4mcp/runtime/node /usr/local/ns4mcp/configure-claude.mjs --uninstall && sudo rm -rf /usr/local/ns4mcp`
+- **Windows:** Settings → Apps → *NS4MCP* → Uninstall (also removes the Claude entry).
+- **Linux:** `~/.local/share/ns4mcp/uninstall.sh`
+</details>
+
+### Option B — From source (developers)
+
+Requires **Node.js ≥ 18**. The native MIDI module ships prebuilt binaries, so this
+normally needs **no compiler**.
 
 ```bash
 git clone git@github.com:gbulfon/ns4mcp.git
 cd ns4mcp
-npm install        # also compiles the native MIDI module
+npm install        # installs deps (prebuilt MIDI binary — no build step needed)
 npm run build      # produces dist/index.js (this is what Claude runs)
-```
-
-> **Build prerequisites for the native MIDI module:**
-> - **macOS** — Xcode Command Line Tools: `xcode-select --install` (CoreMIDI works out of the box).
-> - **Linux** — ALSA headers: `sudo apt install libasound2-dev`.
-
-Confirm your Nord is visible to the computer:
-
-```bash
 npm run doctor     # lists MIDI ports; exits 0 when the Nord is found
 ```
 
-If the port has an unusual name, pass a match string: `npm run doctor -- "Stage 4"`.
+> Only if `npm install` falls back to compiling (rare): **macOS** needs Xcode CLT
+> (`xcode-select --install`); **Linux** needs ALSA headers (`sudo apt install libasound2-dev`).
 
-### 2. Set up the Nord for MIDI ⚠️ (required — do this once)
+Then add the server to Claude Desktop's config file
+(`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS,
+`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
 
-Two things must be true on the instrument, or Claude's changes won't be heard.
+```jsonc
+{
+  "mcpServers": {
+    "nord-stage-4": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/ns4mcp/dist/index.js"],
+      "env": { "NS4_CHANNEL": "1" }
+    }
+  }
+}
+```
+
+- Replace the path with your real one (`pwd` in the project folder).
+- Set `NS4_CHANNEL` to your Nord's global MIDI channel if it isn't `1`.
+- **macOS tip:** if Claude Desktop can't find `node`, use its absolute path
+  (`which node`, often `/opt/homebrew/bin/node`) as `"command"`.
+
+## Set up the Nord for MIDI ⚠️ (required — do this once)
+
+Two things must be true on the instrument, or Claude's changes won't be heard —
+**this applies to both install paths above.**
 
 **a) Enable USB MIDI.** The Nord must be sending/receiving over its USB connection.
 This is on by default; if in doubt, check the System menu.
@@ -68,39 +107,11 @@ on/off, synth vibrato/arp/LFO, the oscillator) are sent as **NRPN**, and the Nor
 model/type/effect/oscillator changes do nothing. (This is the single most common
 setup issue — it's the `Type = CC` default that discards NRPN.)
 
-Also note your Nord's **global MIDI channel** (System menu) — the default config
-below assumes channel **1**.
+Also note your Nord's **global MIDI channel** (System menu) — the config assumes channel **1**.
 
-### 3. Tell Claude Desktop about the server
+## Use it in Claude Desktop
 
-Open Claude Desktop's config file:
-
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-Add a `nord-stage-4` entry under `mcpServers` (merge with anything already there):
-
-```jsonc
-{
-  "mcpServers": {
-    "nord-stage-4": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/ns4mcp/dist/index.js"],
-      "env": { "NS4_CHANNEL": "1" }
-    }
-  }
-}
-```
-
-- Replace `/ABSOLUTE/PATH/TO/ns4mcp` with the real path (run `pwd` in the project folder).
-- Set `NS4_CHANNEL` to your Nord's global MIDI channel if it isn't `1`.
-- **macOS tip:** if Claude Desktop can't find `node`, use the absolute path —
-  `which node` (often `/opt/homebrew/bin/node` with Homebrew) — as `"command"`.
-
-### 4. Restart Claude Desktop and try it
-
-Fully **quit and reopen** Claude Desktop so it launches the server. You should see
-the **nord-stage-4** tools available. Then just ask:
+Fully **quit and reopen** Claude Desktop so it launches the server, then just ask:
 
 > *"List the synth parameters."*
 > *"Set up a warm pad: lower the filter cutoff and add a slow LFO to the filter."*

@@ -1,0 +1,219 @@
+name: Build installers
+
+# Builds the zero-prerequisite installers for macOS, Windows, and Linux and (on a
+# version tag) publishes them to a GitHub Release.
+#
+#   - macOS  : signed + notarized .pkg  (only if the signing secrets are present;
+#              otherwise an unsigned .pkg is produced so the pipeline still works)
+#   - Windows: unsigned Inno Setup .exe (users click through SmartScreen)
+#   - Linux  : .tar.gz with install.sh / uninstall.sh
+#
+# Trigger a release by pushing a tag like `v0.1.0`. Use the "Run workflow" button
+# to build artifacts for testing without releasing.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./package.json').version")-dev" >> "$GITHUB_OUTPUT"
+          fi
+
+  macos:
+    needs: meta
+    runs-on: macos-14
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      ARCH: ${{ matrix.arch }}
+      # Secrets surfaced as env so steps can gate on their presence.
+      MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble bundle
+        run: node installers/build-bundle.mjs --platform darwin --arch "$ARCH" --out bundle
+
+      - name: Import signing certificate
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/ns4.keychain-db"
+          security create-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
+          echo "SIGNED=1" >> "$GITHUB_ENV"
+
+      - name: Codesign runtime + native addon (hardened runtime)
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          ENT=installers/macos/entitlements.plist
+          find bundle/app/node_modules -name '*.node' -print0 | while IFS= read -r -d '' f; do
+            codesign --force --timestamp --options runtime --sign "Developer ID Application" "$f"
+          done
+          codesign --force --timestamp --options runtime --entitlements "$ENT" \
+            --sign "Developer ID Application" bundle/runtime/node
+
+      - name: Build .pkg
+        run: |
+          mkdir -p installers/macos/resources
+          cp LICENSE installers/macos/resources/LICENSE.txt
+          pkgbuild --root bundle \
+            --identifier com.gabrielebulfon.ns4mcp \
+            --version "$VERSION" \
+            --install-location /usr/local/ns4mcp \
+            --scripts installers/macos/scripts \
+            ns4mcp-component.pkg
+          PKG="NS4MCP-${VERSION}-macos-${ARCH}.pkg"
+          productbuild --distribution installers/macos/distribution.xml \
+            --package-path . \
+            --resources installers/macos/resources \
+            "$PKG"
+          echo "PKG=$PKG" >> "$GITHUB_ENV"
+
+      - name: Sign installer
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          productsign --sign "Developer ID Installer" "$PKG" "${PKG%.pkg}-signed.pkg"
+          mv "${PKG%.pkg}-signed.pkg" "$PKG"
+
+      - name: Notarize + staple
+        if: env.MACOS_CERT_P12 != '' && env.APPLE_ID != ''
+        run: |
+          xcrun notarytool submit "$PKG" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "$PKG"
+
+      - name: Warn if unsigned
+        if: env.MACOS_CERT_P12 == ''
+        run: echo "::warning::No macOS signing secrets set — produced an UNSIGNED .pkg. Users must right-click → Open."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos-${{ matrix.arch }}
+          path: NS4MCP-*.pkg
+          if-no-files-found: error
+
+  windows:
+    needs: meta
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble bundle
+        run: node installers/build-bundle.mjs --platform win32 --arch x64 --out bundle
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer (.exe, unsigned)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DNS4Version=$env:VERSION" "/DBundleDir=$((Resolve-Path bundle).Path)" installers\windows\ns4mcp.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows-x64
+          path: installers/windows/NS4MCP-*-setup.exe
+          if-no-files-found: error
+
+  linux:
+    needs: meta
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble bundle
+        run: node installers/build-bundle.mjs --platform linux --arch x64 --out bundle
+
+      - name: Package tarball
+        run: |
+          STAGE="ns4mcp"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp -R bundle/runtime bundle/app "$STAGE/"
+          cp bundle/configure-claude.mjs "$STAGE/"
+          [ -f bundle/VERSION ] && cp bundle/VERSION "$STAGE/" || true
+          cp LICENSE "$STAGE/" 2>/dev/null || true
+          cp installers/linux/install.sh installers/linux/uninstall.sh "$STAGE/"
+          chmod +x "$STAGE/install.sh" "$STAGE/uninstall.sh" "$STAGE/runtime/node"
+          tar -czf "NS4MCP-${VERSION}-linux-x64.tar.gz" "$STAGE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux-x64
+          path: NS4MCP-*-linux-x64.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: [meta, macos, windows, linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: List artifacts
+        run: ls -lR artifacts
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NS4MCP ${{ needs.meta.outputs.version }}
+          files: artifacts/**/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

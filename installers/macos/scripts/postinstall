@@ -1,0 +1,30 @@
+#!/bin/bash
+# macOS .pkg postinstall — runs as root after the bundle is laid down at
+# /usr/local/ns4mcp. We must configure the CONSOLE user's Claude Desktop config
+# (not root's), so resolve the logged-in user and run the patcher as them.
+set -euo pipefail
+
+INSTALL_DIR="/usr/local/ns4mcp"
+NODE_BIN="$INSTALL_DIR/runtime/node"
+PATCHER="$INSTALL_DIR/configure-claude.mjs"
+
+# The user actually logged into the GUI (owner of /dev/console).
+CONSOLE_USER="$(stat -f%Su /dev/console 2>/dev/null || true)"
+if [ -z "$CONSOLE_USER" ] || [ "$CONSOLE_USER" = "root" ]; then
+  echo "postinstall: could not determine the logged-in user; skipping auto-config."
+  echo "Run manually:  \"$NODE_BIN\" \"$PATCHER\" --install --install-dir \"$INSTALL_DIR\""
+  exit 0
+fi
+
+USER_HOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
+if [ -z "$USER_HOME" ]; then USER_HOME="/Users/$CONSOLE_USER"; fi
+
+echo "postinstall: configuring Claude Desktop for $CONSOLE_USER ($USER_HOME)"
+# Run the patcher as the console user so the config file is owned by them.
+sudo -u "$CONSOLE_USER" "$NODE_BIN" "$PATCHER" \
+  --install --install-dir "$INSTALL_DIR" --home "$USER_HOME" || {
+    echo "postinstall: auto-config failed; run the command above manually."
+    exit 0
+  }
+
+exit 0
