@@ -233,7 +233,11 @@ export function buildServer(ctrl: NordController): McpServer {
         'Pass bank (letter: A-H live on Bank LSB 0, I-P on 1, Q-X on 2) and location ' +
         '(page 1-4 + position 1-4 as shown on the display, e.g. "23" = page 2, position 3). ' +
         'Or pass raw bankMsb/bankLsb/program to recall Live/Piano/Sample content ' +
-        '(Bank MSB: 0=Program, 3=Piano, 4=Sample, 6=Live — manual p. 26).',
+        '(Bank MSB: 0=Program, 3=Piano, 4=Sample, 6=Live — manual p. 26). ' +
+        'PIANOS (hardware-verified): bankMsb 3, bankLsb = category index ' +
+        '(0=Grand 1=Upright 2=Electric 3=Clav/Hps 4=Digital 5=Layer), program = ' +
+        'model index 0-based in Sound Manager order. This is the ONLY way to switch ' +
+        'pianos over MIDI — piano.type/model CCs are dump-only. SAMPLES: bankMsb 4.',
       inputSchema: {
         bank: z.string().regex(/^[A-Xa-x]$/).optional().describe('Program bank letter, e.g. "A"'),
         location: z.string().regex(/^[1-4][1-4]$/).optional().describe('Location as page+position, e.g. "23"'),

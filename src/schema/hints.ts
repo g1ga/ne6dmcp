@@ -41,9 +41,9 @@ export const HINTS: Record<string, string> = {
   'piano.enable': 'piano section on/off',
   'piano.level': 'piano section volume',
   'piano.octave-shift': 'piano octave transpose — bipolar, 64 = no shift',
-  'piano.type': 'piano category; the exact sound within it is chosen with piano.model',
-  'piano.model': 'model index within the current piano type (order as in the panel list / Sound Manager)',
-  'piano.variation': 'variation within the current model, where available',
+  'piano.type': 'piano category — NOT RECEIVED over CC (dump-only); to change pianos use select_program with bankMsb 3, bankLsb = category 0-5, program = model index',
+  'piano.model': 'piano model — NOT RECEIVED over CC (dump-only); use select_program (bankMsb 3) instead',
+  'piano.variation': 'piano variation — NOT RECEIVED over CC (dump-only); use select_program (bankMsb 3) instead',
   'piano.eq': 'piano timbre filter (e.g. soft/mid/bright) — verify states via readback',
 
   // --- Sample Synth ---

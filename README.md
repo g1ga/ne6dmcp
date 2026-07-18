@@ -125,13 +125,19 @@ tools available. Then just ask:
 
 Resources: `ne6://schema` (all parameters) and `ne6://patch` (live state).
 
-## Calibrating enumerated selectors (recommended once)
+## Calibrating enumerated selectors
 
-CC numbers come 1:1 from the manual, but the manual does not document the CC
-**values** for multi-position selectors (organ model, effect types, reverb type,
-…). The schema ships with the midpoint/even-slice scheme that upstream ns4mcp
-hardware-confirmed on the Stage 4; selectors whose hint says **"verify"** should
-be checked once against your instrument:
+**The shipped values are hardware-calibrated** (2026-07-18, Nord Electro 6D):
+selector positions are spread evenly over the full 0-127 range
+(`value_i = ceil(i * 127 / (N - 1))`), verified in both directions (panel
+readback + write-tests) for organ model, vibrato/chorus, Effect 1 (8 positions),
+Effect 2 (Vibe last), Amp/Spkr (6 states incl. None and Comp), reverb, rotary
+speed and the O/P/S sources. Notable hardware findings: piano type/model CCs are
+**dump-only** — switch pianos via `select_program` (Bank MSB 3); vibrato
+positions are skipped by the panel on non-B3 models.
+
+Still uncalibrated (defaults may be off): piano EQ/timbre, KBD split states.
+To calibrate a selector yourself:
 
 ```
 npm run listen     # print inbound MIDI while you move panel controls
