@@ -237,7 +237,9 @@ export function buildServer(ctrl: NordController): McpServer {
         'PIANOS (hardware-verified): bankMsb 3, bankLsb = category index ' +
         '(0=Grand 1=Upright 2=Electric 3=Clav/Hps 4=Digital 5=Layer), program = ' +
         'model index 0-based in Sound Manager order. This is the ONLY way to switch ' +
-        'pianos over MIDI — piano.type/model CCs are dump-only. SAMPLES: bankMsb 4.',
+        'pianos over MIDI — piano.type/model CCs are dump-only. SAMPLES ' +
+        '(hardware-verified): bankMsb 4, program = sample list position 0-based ' +
+        '(Sound Manager location - 1), bankLsb = page for positions beyond 49.',
       inputSchema: {
         bank: z.string().regex(/^[A-Xa-x]$/).optional().describe('Program bank letter, e.g. "A"'),
         location: z.string().regex(/^[1-4][1-4]$/).optional().describe('Location as page+position, e.g. "23"'),

@@ -136,7 +136,12 @@ speed and the O/P/S sources. Notable hardware findings: piano type/model CCs are
 **dump-only** — switch pianos via `select_program` (Bank MSB 3); vibrato
 positions are skipped by the panel on non-B3 models.
 
-Still uncalibrated (defaults may be off): piano EQ/timbre, KBD split states.
+Session 2 additions: piano EQ (8 states: Off/Soft/Mid/Bright x String Res
+off/on), KBD split anchors (Off=0, Split=19, Ext KBD to LO=55), and content
+recall — pianos via Bank MSB 3 (LSB = category, PC = model index) and samples
+via Bank MSB 4 (PC = list position 0-based), both hardware-verified.
+
+Still unmapped: remaining KBD split / dual-organ combined states.
 To calibrate a selector yourself:
 
 ```

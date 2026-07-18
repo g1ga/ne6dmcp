@@ -54,7 +54,9 @@ export const OPTIONS: Record<string, SelectorOption[]> = {
 
   // --- Piano (NOTE: transmit/dump-only over CC — see header; use select_program) ---
   'piano.type': spread(['Grand', 'Upright', 'Electric', 'Clav/Hps', 'Digital', 'Layer']),
-  'piano.eq': spread(['Off', 'Soft', 'Mid', 'Bright']), // not yet calibrated
+  // measured full map 2026-07-18: 8 states = 4 EQ x String Res off/on. On some
+  // piano types the panel shows/skips states differently (DYN1/DYN2 variants).
+  'piano.eq': spread(['Off', 'Soft', 'Mid', 'Bright', 'Off+StrRes', 'Soft+StrRes', 'Mid+StrRes', 'Bright+StrRes']),
   'piano.enable': OFF_ON,
   'piano.sustain-pedal': OFF_ON,
   'piano.ctrl-pedal': OFF_ON,
@@ -99,5 +101,12 @@ export const OPTIONS: Record<string, SelectorOption[]> = {
 
   // --- Global ---
   'global.sustain-pedal': OFF_ON,
-  'global.kbd-split': OFF_ON, // split/dual-organ modes may be multi-state — not yet calibrated
+  // measured 2026-07-18 (8-state grid, partial): 0=Off, 19=KBD Split,
+  // 55=Ext KBD to LO ("Split MIDI"); intermediate/combined states (37, 73-127:
+  // dual organ etc.) not yet mapped — verify before relying on them.
+  'global.kbd-split': [
+    { value: 0, label: 'Off' },
+    { value: 19, label: 'KBD Split' },
+    { value: 55, label: 'Ext KBD to LO' },
+  ],
 };

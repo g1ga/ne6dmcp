@@ -12,7 +12,7 @@ export const HINTS: Record<string, string> = {
   // --- Global ---
   'global.volume': 'master output level',
   'global.pan': 'stereo position — bipolar, 64 = center',
-  'global.kbd-split': 'keyboard split / external-keyboard-to-LO / dual organ switch — verify states via readback',
+  'global.kbd-split': 'keyboard split modes (calibrated: Off=0, KBD Split=19, Ext KBD to LO=55; other states unmapped)',
 
   // --- Organ ---
   'organ.enable': 'organ section on/off',
@@ -44,7 +44,7 @@ export const HINTS: Record<string, string> = {
   'piano.type': 'piano category — NOT RECEIVED over CC (dump-only); to change pianos use select_program with bankMsb 3, bankLsb = category 0-5, program = model index',
   'piano.model': 'piano model — NOT RECEIVED over CC (dump-only); use select_program (bankMsb 3) instead',
   'piano.variation': 'piano variation — NOT RECEIVED over CC (dump-only); use select_program (bankMsb 3) instead',
-  'piano.eq': 'piano timbre filter (e.g. soft/mid/bright) — verify states via readback',
+  'piano.eq': 'piano EQ + string resonance combined: 4 EQ states (Off/Soft/Mid/Bright) x String Res off/on (calibrated)',
 
   // --- Sample Synth ---
   'sample-synth.enable': 'sample synth section on/off',
