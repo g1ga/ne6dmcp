@@ -1,10 +1,10 @@
 #!/bin/bash
 # macOS .pkg postinstall — runs as root after the bundle is laid down at
-# /usr/local/ns4mcp. We must configure the CONSOLE user's Claude Desktop config
+# /usr/local/ne6dmcp. We must configure the CONSOLE user's Claude Desktop config
 # (not root's), so resolve the logged-in user and run the patcher as them.
 set -euo pipefail
 
-INSTALL_DIR="/usr/local/ns4mcp"
+INSTALL_DIR="/usr/local/ne6dmcp"
 NODE_BIN="$INSTALL_DIR/runtime/node"
 PATCHER="$INSTALL_DIR/configure-claude.mjs"
 

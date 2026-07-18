@@ -1,4 +1,9 @@
-# NORD Stage 4 MCP Server — Project Plan
+> **Fork note (ne6dmcp):** this document is the upstream ns4mcp (Nord Stage 4)
+> design plan, kept for reference. The Electro 6D fork keeps the same phased
+> architecture but drops all synth/NRPN phases (the Electro 6 is CC-only) and
+> adds program recall (`select_program`).
+
+# NORD Electro 6D MCP Server — Project Plan
 
 > Persistent project memory. Single source of truth for goals, architecture, and
 > phased execution. Update this file as decisions are made and phases complete.
@@ -6,7 +11,7 @@
 ## Goal
 
 A **local MCP server** (Node.js/TypeScript, **stdio** transport) that exposes a
-USB-attached **NORD Stage 4** as a set of MCP tools, so an MCP client (Claude
+USB-attached **NORD Electro 6D** as a set of MCP tools, so an MCP client (Claude
 Desktop) can **read and modify synth patch parameters from natural-language
 requests**.
 
@@ -45,7 +50,7 @@ requests**.
 - Confirm native build toolchain for the rtmidi addon (**node-gyp**).
   - macOS: CoreMIDI works out of the box.
   - Linux: ALSA dev headers required.
-- **Enumerate available MIDI ports** and confirm the Nord Stage 4 is visible
+- **Enumerate available MIDI ports** and confirm the Nord Electro 6D is visible
   before building anything else.
 - Provide a **`doctor` / diagnostic script** that lists ports and flags whether
   the Nord is detected.
@@ -83,8 +88,8 @@ requests**.
 **Authoritative tiebreaker** — official Nord manual (use if anything conflicts;
 the community DB is third-party):
 - Download page: https://www.nordkeyboards.com/downloads/downloads-nord-stage-4
-- Target file: **Nord Stage 4 User Manual v1.2X Edition K (English)** — see
-  "Controlling the Nord Stage 4 using MIDI" + the MIDI Controller list / MIDI
+- Target file: **Nord Electro 6D User Manual v1.2X Edition K (English)** — see
+  "Controlling the Nord Electro 6D using MIDI" + the MIDI Controller list / MIDI
   Implementation Chart appendix.
 
 **Tasks:**
@@ -159,7 +164,7 @@ are **bipolar** — model should reason in **−/0/+ with 64 as center**, not ra
 ## Proposed repo layout (to be confirmed during Phase 1)
 
 ```
-NS4MCP/
+NE6DMCP/
   PLAN.md                 # this file
   README.md               # Phase 5
   package.json
@@ -207,7 +212,7 @@ NS4MCP/
 | Bipolar center value | 64 |
 | Param count (approx) | ~146 |
 | Dataset license | CC BY-SA 4.0 (midi.guide), attribution required |
-| Manual | Nord Stage 4 User Manual v1.2X Edition K (English) |
+| Manual | Nord Electro 6D User Manual v1.2X Edition K (English) |
 
 ## Status log
 
@@ -221,8 +226,8 @@ NS4MCP/
   - **MIDI layer**: pure CC/NRPN/14-bit-NRPN byte builders
     (`src/midi/messages.ts`); `MidiDevice` interface + `RtMidiDevice`
     (`src/midi/device.ts`); Nord send paths (`src/midi/nord.ts`).
-  - **doctor verified against real hardware** — Nord Stage 4 detected on input
-    ("Nord Stage 4 MIDI Output") and output ("Nord Stage 4 MIDI Input").
+  - **doctor verified against real hardware** — Nord Electro 6D detected on input
+    ("Nord Electro 6D MIDI Output") and output ("Nord Electro 6D MIDI Input").
   - **Phase 2 schema**: reproducible `fetch-schema` downloads midi.guide CSV →
     `src/schema/parameters.json`. 146 params (95 cc / 50 nrpn / 1 nrpn14), 5
     bipolar, 40 curated hints. Source/license/date recorded. Confirmed
@@ -230,7 +235,7 @@ NS4MCP/
     bipolar center 64. Section-qualified ids resolve name collisions.
   - **Phase 3+4 MCP server**: 7 tools (list_parameters, get_patch_state,
     set_parameters, snapshot, restore, audition_variations, randomize) +
-    `ns4://schema` / `ns4://patch` resources. Controller with graceful
+    `ne6://schema` / `ne6://patch` resources. Controller with graceful
     connect/reconnect, dry-run, inbound NRPN reconciliation, rationale logging.
   - **End-to-end smoke test passes (16/16)** in dry-run over real MCP stdio:
     validation, range/unknown-id errors, NRPN14 split, CC bytes `[176,59,100]`,

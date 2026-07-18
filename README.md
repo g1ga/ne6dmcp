@@ -1,266 +1,192 @@
-# NS4MCP — Control your Nord Stage 4 from Claude
+# NE6DMCP — Control your Nord Electro 6D from Claude
 
 A local [MCP](https://modelcontextprotocol.io) server that lets you **shape sounds
-on a USB-connected Nord Stage 4 by talking to Claude Desktop in plain language.**
+on a USB-connected Nord Electro 6D by talking to Claude Desktop in plain language.**
 
-> *"Make the synth brighter and a touch slower to speak."*
-> *"Give me a warm electric piano and play Frère Jacques."*
-> *"Turn the lead into a supersaw and open the filter."*
+> *"Give me a slow jazz B3: 888000000, C3 chorus, slow rotary."*
+> *"Warm electric piano with a light tremolo and some Hall reverb."*
+> *"Recall program B:23, then brighten the sample synth a bit."*
 
 Claude turns your request into a set of named parameter changes; this server
-translates them into the exact Nord MIDI messages (CC / NRPN / 14-bit NRPN) and
-applies them to your instrument live. You stay in the loop — Claude proposes and
-applies, **you** are the ears.
+translates them into the exact MIDI CC messages and applies them to your
+instrument live. You stay in the loop — Claude proposes and applies, **you** are
+the ears. When the sound is right, press **Store** on the instrument.
 
-- 🎛️ **146 parameters** across piano, organ, and synth — filters, envelopes, LFO,
-  arp, effects, oscillator.
+This is a fork of [gbulfon/ns4mcp](https://github.com/gbulfon/ns4mcp) (Nord
+Stage 4), adapted for the Nord Electro 6D:
+
+- 🎛️ **77 parameters** across organ (all 9 drawbars, model, vibrato/chorus,
+  percussion), piano (type/model/variation, timbre), sample synth
+  (attack/decay, filter, dynamics) and the full effects chain (Effect 1/2,
+  delay, amp/rotary, EQ, reverb).
+- 🎼 **Program recall**: `select_program` switches to any program slot
+  (e.g. bank B, location 23) via Bank Select + Program Change — great for
+  setlists.
 - 🗣️ **Talk in musical terms**, not MIDI bytes. Claude picks the parameters.
 - 🔊 **Audition + undo** built in: snapshot a sound, try variations, A/B, restore.
 - 🎹 **Play notes & melodies** through the current sound to hear changes instantly.
+- ✨ Compared to the Stage 4 original, the Electro 6 speaks **plain MIDI CC
+  only** (no NRPN) — simpler and more robust. The schema is transcribed 1:1
+  from the official manual's MIDI Controller List (v2.6x Edition J, Appendix II).
 
----
+## What canNOT be done over MIDI (by design, on all Nords)
 
-## Install
+- **Naming or storing programs** — press Store on the instrument; rename in
+  Nord Sound Manager.
+- **Loading new pianos/samples** — Nord Sound Manager only.
+- **Addressing sounds by name** ("White Grand Med") — only categories and
+  model/variation indices travel over MIDI; pick exact sounds on the panel.
 
-You need a **Nord Stage 4** connected over **USB** and **[Claude Desktop](https://claude.ai/download)**.
-Pick one of the two install paths below, **then do the [Nord MIDI setup](#set-up-the-nord-for-midi-required-do-this-once)**.
+## Quick start (Claude Desktop)
 
-### Option A — Download an installer (recommended, nothing else to install)
+You need: a **Nord Electro 6D** connected over **USB**, **Node.js ≥ 18**, and
+**[Claude Desktop](https://claude.ai/download)**. macOS and Linux are supported.
 
-Grab the installer for your OS from the **[Releases page](https://github.com/gbulfon/ns4mcp/releases)**.
-Each one bundles a Node runtime + the app and **configures Claude Desktop for you** —
-no Node, no developer tools, no editing config files.
+### 1. Get the code and build it
 
-| OS | Download | Notes |
-|---|---|---|
-| **macOS** | `NS4MCP-<ver>-macos-arm64.pkg` (Apple Silicon) · `…-x64.pkg` (Intel) | Signed & notarized — double-click to install. |
-| **Windows** | `NS4MCP-<ver>-windows-x64-setup.exe` | Installs per-user (no admin). It's **unsigned**, so Windows SmartScreen warns: click **More info → Run anyway**. |
-| **Linux** | `NS4MCP-<ver>-linux-x64.tar.gz` | `tar -xzf` it, then run `./ns4mcp/install.sh`. |
-
-When it finishes, do the Nord setup below and **quit & reopen Claude Desktop**.
-
-<details>
-<summary>How to uninstall</summary>
-
-- **macOS:** `sudo /usr/local/ns4mcp/runtime/node /usr/local/ns4mcp/configure-claude.mjs --uninstall && sudo rm -rf /usr/local/ns4mcp`
-- **Windows:** Settings → Apps → *NS4MCP* → Uninstall (also removes the Claude entry).
-- **Linux:** `~/.local/share/ns4mcp/uninstall.sh`
-</details>
-
-### Option B — From source (developers)
-
-Requires **Node.js ≥ 18**. The native MIDI module ships prebuilt binaries, so this
-normally needs **no compiler**.
-
-```bash
-git clone git@github.com:gbulfon/ns4mcp.git
-cd ns4mcp
-npm install        # installs deps (prebuilt MIDI binary — no build step needed)
+```
+git clone https://github.com/g1ga/ne6dmcp.git
+cd ne6dmcp
+npm install        # also compiles the native MIDI module
 npm run build      # produces dist/index.js (this is what Claude runs)
+```
+
+> **Build prerequisites for the native MIDI module:**
+> - **macOS** — Xcode Command Line Tools: `xcode-select --install` (CoreMIDI works out of the box).
+> - **Linux** — ALSA headers: `sudo apt install libasound2-dev`.
+
+Confirm the Nord is visible to the computer:
+
+```
 npm run doctor     # lists MIDI ports; exits 0 when the Nord is found
 ```
 
-> Only if `npm install` falls back to compiling (rare): **macOS** needs Xcode CLT
-> (`xcode-select --install`); **Linux** needs ALSA headers (`sudo apt install libasound2-dev`).
+### 2. Set up the Nord for MIDI (once)
 
-Then add the server to Claude Desktop's config file
-(`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS,
-`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+On the Electro 6D, open the **MIDI menu** (Shift + MIDI) and check:
 
-```jsonc
+- **USB MIDI is active** and note the **Global channel** (default 1; the
+  default config below assumes 1).
+- **Control Change send/receive = On** — panel knobs/buttons are transmitted
+  and received as CC.
+- **Program Change send/receive = On** if you want `select_program` to work.
+- **Local Control = On** (normal standalone use).
+
+### 3. Tell Claude Desktop about the server
+
+Open Claude Desktop's config file:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add a `nord-electro-6d` entry under `mcpServers` (merge with anything already there):
+
+```json
 {
   "mcpServers": {
-    "nord-stage-4": {
+    "nord-electro-6d": {
       "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/ns4mcp/dist/index.js"],
-      "env": { "NS4_CHANNEL": "1" }
+      "args": ["/ABSOLUTE/PATH/TO/ne6dmcp/dist/index.js"],
+      "env": { "NE6_CHANNEL": "1" }
     }
   }
 }
 ```
 
-- Replace the path with your real one (`pwd` in the project folder).
-- Set `NS4_CHANNEL` to your Nord's global MIDI channel if it isn't `1`.
-- **macOS tip:** if Claude Desktop can't find `node`, use its absolute path
-  (`which node`, often `/opt/homebrew/bin/node`) as `"command"`.
+- Replace `/ABSOLUTE/PATH/TO/ne6dmcp` with the real path (run `pwd` in the project folder).
+- Set `NE6_CHANNEL` to your Nord's global MIDI channel if it isn't `1`.
+- **macOS tip:** if Claude Desktop can't find `node`, use the absolute path —
+  `which node` (often `/opt/homebrew/bin/node` with Homebrew) — as `"command"`.
 
-## Set up the Nord for MIDI ⚠️ (required — do this once)
+### 4. Restart Claude Desktop and try it
 
-Two things must be true on the instrument, or Claude's changes won't be heard —
-**this applies to both install paths above.**
+Fully **quit and reopen** Claude Desktop. You should see the **nord-electro-6d**
+tools available. Then just ask:
 
-**a) Enable USB MIDI.** The Nord must be sending/receiving over its USB connection.
-This is on by default; if in doubt, check the System menu.
-
-**b) Enable NRPN reception.** Many parameters (organ & piano model/type, effects
-on/off, synth vibrato/arp/LFO, the oscillator) are sent as **NRPN**, and the Nord
-**silently ignores NRPN unless you turn it on:**
-
-> On the Nord:
-> 1. Press **Shift + Program 7** to open the **MIDI menu**.
-> 2. Press **PAGE ►** until you reach **page 7, "Control / NRPN / Device Mode"**.
-> 3. Set **Type = `CC & NRPN`**.
-> 4. Set **Ctrl = `Send & Receive`** (Send also lets the Nord *tell* the server what you tweak by hand).
-> 5. Press **Shift** again to exit. Settings persist automatically.
-
-**Symptom if you skip this:** basic controls (filter, levels, on/off) respond, but
-model/type/effect/oscillator changes do nothing. (This is the single most common
-setup issue — it's the `Type = CC` default that discards NRPN.)
-
-Also note your Nord's **global MIDI channel** (System menu) — the config assumes channel **1**.
-
-## Use it in Claude Desktop
-
-Fully **quit and reopen** Claude Desktop so it launches the server, then just ask:
-
-> *"List the synth parameters."*
-> *"Set up a warm pad: lower the filter cutoff and add a slow LFO to the filter."*
+> *"List the organ parameters."*
+> *"Set up a gospel B3: all drawbars out, C3 chorus, fast rotary, some drive."*
 > *"Play a C major chord so I can hear it."*
-> *"That's too dark — open it up a bit and play it again."*
-
-Claude will read the current patch, apply changes, and play notes for you to judge.
-Ask it to `snapshot` before big changes so you can `restore` if you don't like them.
-
----
-
-## What you can ask for
-
-| Capability | Example prompt |
-|---|---|
-| Inspect the patch | *"What's the current synth filter set to?"* |
-| Change sound by feel | *"Make it punchier and a bit darker."* |
-| Pick a sound category | *"Switch the piano to an electric piano."* |
-| Choose an oscillator waveform | *"Give the synth a supersaw."* / *"Use tubular bells."* |
-| Hear it | *"Play an arpeggiated A minor chord."* |
-| Play a melody | *"Play Frère Jacques at 100 BPM."* |
-| A/B and undo | *"Snapshot this, then try three brighter variations."* / *"Go back to the snapshot."* |
-| Explore | *"Randomize the synth envelope a little."* |
-
-### Selecting sounds by category
-
-The Nord's individual loaded sound *names* (e.g. "White Grand XL") aren't readable
-over MIDI — only **categories** are. So Claude selects a **category** (Grand,
-Electric Piano, B3 organ, etc.) and you pick the exact model on the instrument if
-you want a specific one. Browse what's loaded with
-`npm run browse-sounds -- --section piano|organ|synth` and read the names off the
-Nord's display.
-
----
+> *"Now the ballad version: 888800000, slow rotary, touch of reverb."*
 
 ## Tools (what Claude has access to)
 
-| Tool | Purpose |
-|---|---|
-| `list_parameters` | List parameters (filter by section/query) with ranges, hints, current values. |
-| `get_patch_state` | The current authoritative patch as JSON. |
-| `set_parameters` | Apply a diff of named changes; validates and emits the right MIDI. |
-| `play_notes` | Play notes as a chord/arpeggio to audition the sound. |
-| `play_sequence` | Play a timed melody (notes + rests at a tempo) in one call. |
-| `snapshot` | Save current state for A/B compare and undo. |
-| `restore` | Restore a snapshot (default most recent) and re-send to the Nord. |
-| `audition_variations` | Step through N proposed variations to choose between. |
-| `randomize` | Mutate selected parameters within musical ranges. |
+| Tool                  | Purpose                                                                       |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `list_parameters`     | List parameters (filter by section/query) with ranges, hints, current values. |
+| `get_patch_state`     | The current authoritative patch as JSON.                                      |
+| `set_parameters`      | Apply a diff of named changes; validates and emits the right MIDI CC.         |
+| `select_program`      | Recall a program slot (bank + location) via Bank Select + Program Change.     |
+| `play_notes`          | Play notes as a chord/arpeggio to audition the sound.                         |
+| `play_sequence`       | Play a timed melody (notes + rests at a tempo) in one call.                   |
+| `snapshot`            | Save current state for A/B compare and undo.                                  |
+| `restore`             | Restore a snapshot (default most recent) and re-send to the Nord.             |
+| `audition_variations` | Step through N proposed variations to choose between.                         |
+| `randomize`           | Mutate selected parameters within musical ranges.                             |
 
-Resources: `ns4://schema` (all parameters) and `ns4://patch` (live state).
+Resources: `ne6://schema` (all parameters) and `ne6://patch` (live state).
 
----
+## Calibrating enumerated selectors (recommended once)
+
+CC numbers come 1:1 from the manual, but the manual does not document the CC
+**values** for multi-position selectors (organ model, effect types, reverb type,
+…). The schema ships with the midpoint/even-slice scheme that upstream ns4mcp
+hardware-confirmed on the Stage 4; selectors whose hint says **"verify"** should
+be checked once against your instrument:
+
+```
+npm run listen     # print inbound MIDI while you move panel controls
+```
+
+Click through a selector on the panel and note the CC values it transmits, then
+adjust the option lists in `src/schema/options.ts` and run `npm run build-schema`.
+Panel moves are also read back into `ne6://patch` live state automatically.
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| Tools don't appear in Claude Desktop | Did you `npm run build`? Is the path in the config absolute and correct? Fully quit & reopen Claude Desktop. |
-| Filter/levels work but model/effect/oscillator changes do nothing | NRPN isn't enabled — redo **step 2b** (MIDI menu page 7, `Type = CC & NRPN`). |
-| Nothing happens at all | `npm run doctor` — is the Nord detected? Check USB and that USB MIDI is on. Confirm `NS4_CHANNEL` matches the Nord's global channel. |
-| "node: command not found" in Claude logs | Use the absolute path to node as `"command"` (`which node`). |
-| Changes feel like they're being dropped during big edits | Expected for rapid NRPN bursts; the server paces them (~150 ms apart). If you hand-tweak fast on the panel, the Nord itself can drop messages. |
+| Symptom                                    | Fix                                                                                                                  |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Tools don't appear in Claude Desktop       | Did you `npm run build`? Is the path in the config absolute and correct? Fully quit & reopen Claude Desktop.         |
+| Nothing happens at all                     | `npm run doctor` — is the Nord detected? Check USB and MIDI menu. Confirm `NE6_CHANNEL` matches the global channel.  |
+| Parameters change but program recall doesn't | Enable Program Change receive in the MIDI menu.                                                                     |
+| A selector lands on the wrong option       | Calibrate it — see "Calibrating enumerated selectors".                                                               |
+| "node: command not found" in Claude logs   | Use the absolute path to node as `"command"` (`which node`).                                                         |
 
-You can sanity-check the whole pipeline without the synth:
+You can sanity-check the whole pipeline without the instrument:
 
-```bash
+```
 npm run smoke      # builds, then drives the server in --dry-run over MCP
 ```
 
----
+## How it works
 
-## Verify against hardware (optional)
-
-```bash
-npm run midi-test               # sweeps the filter, sends an NRPN + a 14-bit NRPN
-npm run midi-test -- --listen   # just print inbound MIDI while you move knobs
-```
-
-This sends live MIDI and **will change the Nord's current sound** — that's on
-purpose, so you can confirm the three send paths (CC, NRPN, 14-bit NRPN) actually
-move the instrument.
-
----
-
-## How it works (for the curious)
-
-- **Claude works in named, normalized parameters** (`synth-filter.frequency`), never
-  raw MIDI bytes. It does the musical reasoning.
-- **This server is a deterministic translator.** All byte-level specifics (CC vs
-  NRPN vs 14-bit NRPN, message ordering, bipolar center offsets, pacing) live here.
-- **You judge the sound.** The server can't hear — it proposes and applies;
-  `snapshot` / `audition_variations` / `restore` give you A/B and undo.
-
-See [`PLAN.md`](./PLAN.md) for the full phased design.
-
-### Configuration flags
-
-| Flag | Env | Default | Meaning |
-|---|---|---|---|
-| `--dry-run` | — | off | Validate + track state, never send MIDI |
-| `--channel <1-16>` | `NS4_CHANNEL` | `1` | Nord global MIDI channel |
-| `--port-match <str>` | `NS4_PORT_MATCH` | `nord` | MIDI port name substring |
-
-### The synth oscillator (a bonus — mostly undocumented)
-
-The official manual describes only one oscillator NRPN, mislabeled. By listening to
-what the Nord transmits from its panel, NS4MCP maps the **complete** oscillator:
-three NRPNs (`synth-oscillator.type` 3/1 → `category` 3/2 → `wave` 3/3) covering all
-four types and ~91 named waveforms, exposed in the schema as `oscillatorWaveforms`:
-
-- **Analog** — 8 categories, 45 named waves (Pure, Sub Osc, Sync, Shape, Shape Sine, Multi, Super, Misc).
-- **FM-H** — 5 categories (Harmonic A–E); wave = FM ratio (index 0 = 0.5, then 1–24).
-- **FM-I** — 5 categories (Inharmonic A–E); wave = semitone (−12…+48).
-- **Wave** — 5 categories (Bells/Tines, Acoustic, Digital, Organ, Keys); 46 named waves.
-
-So *"give the synth tubular bells"* → Wave / Bells-Tines / wave 5, and *"a DX
-electric piano"* → Wave / Keys. `npm run wind` is a complete example patch (a wind/
-noise sound) built entirely through the server.
+- **Claude works in named, normalized parameters** (`organ.drawbar-1`,
+  `effect2.rate`), never raw MIDI bytes. It does the musical reasoning.
+- **This server is a deterministic translator** to MIDI CC (see
+  `src/midi/messages.ts`, `src/translate.ts`).
+- **The schema is generated** by `npm run build-schema` from a table transcribed
+  from the official manual (`scripts/build-schema.ts`), merged with curated
+  option names (`src/schema/options.ts`) and sound-design hints
+  (`src/schema/hints.ts`).
+- **You judge the sound.** The server can't hear — `snapshot` /
+  `audition_variations` / `restore` give you A/B and undo.
 
 ### Architecture
 
-- `src/midi/messages.ts` — pure CC/NRPN/14-bit NRPN byte builders (the deterministic core).
-- `src/midi/device.ts` — `MidiDevice` interface + `RtMidiDevice` (`@julusian/midi`); mockable.
+- `src/midi/messages.ts` — pure CC / Program Change byte builders.
+- `src/midi/device.ts` — `MidiDevice` interface + `RtMidiDevice` (`@julusian/midi`, lazily loaded); mockable.
 - `src/midi/nord.ts` — Nord-specific send paths bound to a channel.
 - `src/translate.ts` — named change → validated value → MIDI send.
-- `src/state/patch.ts` — authoritative state, snapshot stack, inbound NRPN reconciliation.
-- `src/server.ts` — MCP tools + resources (transport-agnostic; stdio today, HTTP/SSE later).
+- `src/state/patch.ts` — authoritative state, snapshot stack, inbound CC reconciliation.
+- `src/server.ts` — MCP tools + resources (transport-agnostic; stdio today).
 - `src/index.ts` — stdio transport entrypoint.
 
----
+## Attribution & license
 
-## Parameter schema (reproducible)
-
-`src/schema/parameters.json` is **generated**, not hand-copied:
-
-```bash
-npm run fetch-schema               # download the upstream database and re-transform
-npm run fetch-schema -- --offline  # transform from a cached copy
-```
-
-146 parameters: 95 CC, 50 NRPN, 1 14-bit NRPN, 5 bipolar/centered. Section-qualified
-ids (`piano.model` vs `organ.model`) keep colliding names distinct.
-
-### Data attribution & license
-
-This project's **code is MIT-licensed** (see `package.json`). Parameter data is
-derived from the community **[midi.guide](https://midi.guide/d/nord/stage-4/)** Nord
-Stage 4 database, licensed **CC BY-SA 4.0** — the transform records the source URL,
-license, and fetch date in `parameters.json`. The official
-[Nord Stage 4 User Manual (v1.2X, Edition K)](https://www.nordkeyboards.com/downloads/downloads-nord-stage-4)
-is the **authoritative tiebreaker** on any conflict. *Nord* and *Nord Stage* are
-trademarks of Clavia DMI AB; this is an independent, unofficial project.
+- **Code:** MIT, forked from [gbulfon/ns4mcp](https://github.com/gbulfon/ns4mcp)
+  — the architecture, translation layer, state management and tooling are his
+  work; this fork adapts them to the Electro 6D.
+- **Parameter data:** transcribed from the official
+  [Nord Electro 6 User Manual](https://www.nordkeyboards.com/downloads/downloads-nord-electro-6)
+  (v2.6x Edition J), Appendix II: MIDI Controller List.
+- *Nord* and *Nord Electro* are trademarks of Clavia DMI AB; this is an
+  independent, unofficial project.

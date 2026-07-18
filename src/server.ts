@@ -11,8 +11,8 @@ import { NordController } from './controller.js';
 import type { ParamChange } from './translate.js';
 import type { ParameterSpec } from './schema/types.js';
 
-const SCHEMA_URI = 'ns4://schema';
-const PATCH_URI = 'ns4://patch';
+const SCHEMA_URI = 'ne6://schema';
+const PATCH_URI = 'ne6://patch';
 
 function text(obj: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(obj, null, 2) }] };
@@ -36,23 +36,25 @@ function paramView(p: ParameterSpec, ctrl: NordController) {
 }
 
 const changeShape = {
-  id: z.string().describe('Section-qualified parameter id, e.g. "synth-filter.frequency"'),
-  value: z.number().int().optional().describe('Raw device value within the param range (0-127, or 0-16383 for nrpn14)'),
-  label: z.string().optional().describe('Named option for an enumerated selector instead of value, e.g. piano.type = "Grand" (see the param\'s options)'),
-  category: z.number().int().min(0).max(127).optional().describe('nrpn14 only: sample category (Data Entry MSB)'),
-  sample: z.number().int().min(0).max(127).optional().describe('nrpn14 only: sample within category (Data Entry LSB)'),
+  id: z.string().describe('Section-qualified parameter id, e.g. "organ.drawbar-1"'),
+  value: z.number().int().optional().describe('Raw device value within the param range (0-127)'),
+  label: z.string().optional().describe('Named option for an enumerated selector instead of value, e.g. organ.model = "B3" (see the param\'s options)'),
 };
 
 export function buildServer(ctrl: NordController): McpServer {
   const server = new McpServer(
-    { name: 'ns4mcp', version: '0.1.0' },
+    { name: 'ne6dmcp', version: '0.1.0' },
     {
       instructions:
-        'Controls a Nord Stage 4 over MIDI. Work in named parameters (ids like ' +
-        '"synth-filter.frequency"); never raw MIDI. Read the ns4://schema resource for ' +
+        'Controls a Nord Electro 6D over MIDI. Work in named parameters (ids like ' +
+        '"organ.drawbar-1"); never raw MIDI. Read the ne6://schema resource for ' +
         'ids, ranges, orientation (bipolar params center at 64), and hints. Use ' +
-        'set_parameters with a diff of changes. The server cannot hear audio — propose ' +
-        'changes and let the human judge; use audition_variations / snapshot for A/B.',
+        'set_parameters with a diff of changes and select_program to recall program ' +
+        'slots. Sound/sample NAMES are not addressable over MIDI — only categories ' +
+        'and indices; the human picks exact sounds on the instrument. The server ' +
+        'cannot hear audio — propose changes and let the human judge; use ' +
+        'audition_variations / snapshot for A/B. Storing and naming programs ' +
+        'happens on the instrument / Nord Sound Manager, not over MIDI.',
     },
   );
 
@@ -61,7 +63,7 @@ export function buildServer(ctrl: NordController): McpServer {
     'parameter-schema',
     SCHEMA_URI,
     {
-      title: 'Nord Stage 4 parameter schema',
+      title: 'Nord Electro 6D parameter schema',
       description: 'All addressable parameters with ids, ranges, orientation, and semantic hints.',
       mimeType: 'application/json',
     },
@@ -84,7 +86,7 @@ export function buildServer(ctrl: NordController): McpServer {
     'patch-state',
     PATCH_URI,
     {
-      title: 'Current Nord Stage 4 patch state',
+      title: 'Current Nord Electro 6D patch state',
       description: 'Authoritative in-memory parameter values (set + readback).',
       mimeType: 'application/json',
     },
@@ -111,7 +113,7 @@ export function buildServer(ctrl: NordController): McpServer {
       title: 'List parameters',
       description: 'List addressable Nord parameters with ranges, orientation, hints, and current values. Filter by section or free-text query.',
       inputSchema: {
-        section: z.string().optional().describe('Case-insensitive section filter, e.g. "synth filter"'),
+        section: z.string().optional().describe('Case-insensitive section filter, e.g. "organ"'),
         query: z.string().optional().describe('Case-insensitive substring over id/name/hint'),
       },
     },
@@ -143,14 +145,14 @@ export function buildServer(ctrl: NordController): McpServer {
     {
       title: 'Set parameters',
       description:
-        'Apply a diff of named parameter changes. Validates ranges/orientation and translates each to the correct CC / NRPN / 14-bit NRPN message. Bipolar params use raw values with 64 as center. For enumerated selectors (e.g. piano.type) pass `label` ("Grand") instead of a value. For the sample param, pass value 0-16383 or category+sample.',
+        'Apply a diff of named parameter changes. Validates ranges/orientation and translates each to the correct MIDI CC message. Bipolar params use raw values with 64 as center. For enumerated selectors (e.g. piano.type) pass `label` ("Grand") instead of a value.',
       inputSchema: {
         changes: z.array(z.object(changeShape)).min(1).describe('One or more parameter changes to apply'),
         rationale: z.string().optional().describe('Optional one-line rationale, logged for traceability'),
       },
     },
     async ({ changes, rationale }) => {
-      if (rationale) process.stderr.write(`[ns4mcp] set_parameters: ${rationale}\n`);
+      if (rationale) process.stderr.write(`[ne6dmcp] set_parameters: ${rationale}\n`);
       const { applied, errors, sent } = await ctrl.applyBatch(changes as ParamChange[]);
       return text({
         sent,
@@ -218,6 +220,57 @@ export function buildServer(ctrl: NordController): McpServer {
         dryRun: ctrl.dryRun,
         note: result.played ? 'Played as one continuous sequence. Ask the human how it sounded.' : 'Nothing played.',
         ...(result.truncated ? { warning: 'sequence truncated (exceeded step/duration cap); split into multiple calls if needed' } : {}),
+      });
+    },
+  );
+
+  server.registerTool(
+    'select_program',
+    {
+      title: 'Select program',
+      description:
+        'Recall a Program on the Nord Electro 6 via Bank Select + Program Change. ' +
+        'Pass bank (letter: A-H live on Bank LSB 0, I-P on 1, Q-X on 2) and location ' +
+        '(page 1-4 + position 1-4 as shown on the display, e.g. "23" = page 2, position 3). ' +
+        'Or pass raw bankMsb/bankLsb/program to recall Live/Piano/Sample content ' +
+        '(Bank MSB: 0=Program, 3=Piano, 4=Sample, 6=Live — manual p. 26).',
+      inputSchema: {
+        bank: z.string().regex(/^[A-Xa-x]$/).optional().describe('Program bank letter, e.g. "A"'),
+        location: z.string().regex(/^[1-4][1-4]$/).optional().describe('Location as page+position, e.g. "23"'),
+        bankMsb: z.number().int().min(0).max(127).optional().describe('Raw Bank Select MSB (0=Program, 3=Piano, 4=Sample, 6=Live)'),
+        bankLsb: z.number().int().min(0).max(127).optional().describe('Raw Bank Select LSB'),
+        program: z.number().int().min(0).max(127).optional().describe('Raw Program Change value'),
+      },
+    },
+    async ({ bank, location, bankMsb, bankLsb, program }) => {
+      let msb: number;
+      let lsb: number;
+      let pc: number;
+      if (bank !== undefined && location !== undefined) {
+        const bankIdx = bank.toUpperCase().charCodeAt(0) - 65; // A = 0
+        const page = Number(location[0]);
+        const pos = Number(location[1]);
+        const slot = (page - 1) * 4 + (pos - 1); // 0-15 within the bank
+        msb = 0;
+        lsb = Math.floor(bankIdx / 8);
+        pc = (bankIdx % 8) * 16 + slot;
+      } else if (program !== undefined) {
+        msb = bankMsb ?? 0;
+        lsb = bankLsb ?? 0;
+        pc = program;
+      } else {
+        return text({ error: 'pass bank+location (e.g. bank "A", location "23") or raw bankMsb/bankLsb/program' });
+      }
+      const result = ctrl.selectProgram(msb, lsb, pc);
+      return text({
+        ...result,
+        bankMsb: msb,
+        bankLsb: lsb,
+        programChange: pc,
+        ...(bank ? { requested: `${bank.toUpperCase()}:${location}` } : {}),
+        note: result.sent
+          ? 'Program recalled. The panel changed wholesale; previous in-memory parameter state may be stale.'
+          : 'Nothing sent.',
       });
     },
   );

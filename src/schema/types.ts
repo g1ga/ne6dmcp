@@ -3,7 +3,7 @@
  *
  * The schema is the contract between the model (which works in named, normalized
  * parameters) and the translation layer (which emits MIDI bytes). It is GENERATED
- * by scripts/fetch-schema.ts from the midi.guide CSV — do not hand-edit
+ * by scripts/build-schema.ts from the manual-transcribed table — do not hand-edit
  * parameters.json.
  */
 

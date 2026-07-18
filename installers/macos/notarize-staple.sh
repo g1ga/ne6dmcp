@@ -8,7 +8,7 @@
 #
 # Usage:
 #   installers/macos/notarize-staple.sh <signed.pkg> [keychain-profile] [budget-minutes]
-#   installers/macos/notarize-staple.sh NS4MCP-0.1.0-macos-arm64.pkg ns4-notary 120
+#   installers/macos/notarize-staple.sh NE6DMCP-0.1.0-macos-arm64.pkg ns4-notary 120
 #
 # Use this to staple an artifact CI built but couldn't notarize during an Apple
 # outage: download the .pkg from the workflow run, run this, re-upload.

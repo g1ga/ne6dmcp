@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
-    <title>NS4MCP — Nord Stage 4 for Claude</title>
+    <title>NE6DMCP — Nord Electro 6D for Claude</title>
     <welcome mime-type="text/plain"><![CDATA[
-This installs the NS4MCP server (a portable Node runtime + the app) and adds it
+This installs the NE6DMCP server (a portable Node runtime + the app) and adds it
 to your Claude Desktop configuration.
 
 After installing, quit and reopen Claude Desktop, then ask it to control your
-Nord Stage 4. Don't forget to enable NRPN on the instrument (MIDI menu, page 7).
+Nord Electro 6D. Don't forget to enable NRPN on the instrument (MIDI menu, page 7).
 ]]></welcome>
     <license mime-type="text/plain" file="LICENSE.txt"/>
     <options customize="never" require-scripts="true" hostArchitectures="arm64,x86_64"/>
     <os-version min="11.0"/>
     <choices-outline>
         <line choice="default">
-            <line choice="com.gabrielebulfon.ns4mcp"/>
+            <line choice="com.gabrielebulfon.ne6dmcp"/>
         </line>
     </choices-outline>
     <choice id="default"/>
-    <choice id="com.gabrielebulfon.ns4mcp" visible="false">
-        <pkg-ref id="com.gabrielebulfon.ns4mcp"/>
+    <choice id="com.gabrielebulfon.ne6dmcp" visible="false">
+        <pkg-ref id="com.gabrielebulfon.ne6dmcp"/>
     </choice>
-    <pkg-ref id="com.gabrielebulfon.ns4mcp" version="0" onConclusion="none">ns4mcp-component.pkg</pkg-ref>
+    <pkg-ref id="com.gabrielebulfon.ne6dmcp" version="0" onConclusion="none">ne6dmcp-component.pkg</pkg-ref>
 </installer-gui-script>

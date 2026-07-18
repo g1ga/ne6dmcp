@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * build-bundle.mjs — assemble a self-contained NS4MCP bundle for one OS/arch:
+ * build-bundle.mjs — assemble a self-contained NE6DMCP bundle for one OS/arch:
  * a portable Node runtime + the built app + its production node_modules, so the
  * end user needs nothing preinstalled.
  *
@@ -116,7 +116,7 @@ async function main() {
   if (!['darwin', 'win32', 'linux'].includes(platform)) throw new Error(`unsupported --platform ${platform}`);
   if (!['x64', 'arm64'].includes(arch)) throw new Error(`unsupported --arch ${arch}`);
 
-  console.log(`Building NS4MCP bundle: ${platform}/${arch}, Node ${version}`);
+  console.log(`Building NE6DMCP bundle: ${platform}/${arch}, Node ${version}`);
 
   // 0. Ensure the app is built and production deps are installed.
   if (!existsSync(join(ROOT, 'dist', 'index.js'))) {
@@ -125,7 +125,7 @@ async function main() {
   }
 
   // Stage a clean production node_modules in a temp dir so we never touch the dev tree.
-  const stage = join(tmpdir(), `ns4mcp-stage-${platform}-${arch}`);
+  const stage = join(tmpdir(), `ne6dmcp-stage-${platform}-${arch}`);
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(stage, { recursive: true });
   copyFileSync(join(ROOT, 'package.json'), join(stage, 'package.json'));

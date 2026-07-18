@@ -1,72 +1,83 @@
 /**
- * Curated semantic hints, keyed by parameter id (section-qualified slug).
+ * Curated semantic hints for the Nord Electro 6D, keyed by parameter id.
  *
- * These are layered onto the generated schema by scripts/fetch-schema.ts. They
- * are semantic metadata (what a parameter *means* for sound design), NOT MIDI
+ * Layered onto the generated schema by scripts/build-schema.ts. They are
+ * semantic metadata (what a parameter *means* for sound design), NOT MIDI
  * values — so maintaining them here by hand is appropriate and they are
- * re-applied deterministically on every fetch. Parameters without a hint simply
+ * re-applied deterministically on every build. Parameters without a hint simply
  * omit the field.
  */
 
 export const HINTS: Record<string, string> = {
   // --- Global ---
   'global.volume': 'master output level',
-
-  // --- Synth: oscillator / tone ---
-  'synth.sample-category-and-sample': '14-bit: MSB selects sample category, LSB selects sample within it',
-  'synth.sample-bright': 'sample brightness — high-frequency content of the sample',
-  'synth-oscillator.pitch-coarse': 'oscillator pitch in semitones — bipolar, 64 = no transpose',
-  'synth-oscillator.pitch-fine': 'oscillator fine tune/detune — bipolar, 64 = in tune',
-  'synth-oscillator.envelope-to-pitch': 'how much the modulation envelope sweeps pitch',
-
-  // --- Synth: filter — the main "brightness/openness" control ---
-  'synth-filter.frequency': 'filter cutoff — brightness/openness; low = dark/muffled, high = bright/open',
-  'synth-filter.resonance': 'filter resonance/emphasis at the cutoff — adds bite/whistle as it rises',
-  'synth-filter.drive': 'filter drive/overdrive — adds dirt and harmonic saturation',
-  'synth-filter.keyboard-track': 'how much cutoff follows the note pitch up the keyboard',
-  'synth-filter.type': 'filter type/slope selection',
-
-  // --- Synth: filter envelope (shapes how the filter opens over time) ---
-  'synth-filter-envelope.attack': 'filter envelope attack — how fast the filter opens',
-  'synth-filter-envelope.decay': 'filter envelope decay — fall to sustain after the attack peak',
-  'synth-filter-envelope.sustain': 'filter envelope sustain — held cutoff level',
-  'synth-filter-envelope.release': 'filter envelope release — how long the filter stays open after release',
-  'synth-filter-envelope.amount': 'how much the envelope modulates the cutoff',
-
-  // --- Synth: amplifier envelope (loudness contour) ---
-  'synth-amplifier-envelope.attack': 'amp attack — how fast the note speaks (0 = instant, high = slow swell)',
-  'synth-amplifier-envelope.decay': 'amp decay — fall to sustain level after attack',
-  'synth-amplifier-envelope.sustain': 'amp sustain — held loudness while a key is down',
-  'synth-amplifier-envelope.release': 'amp release — how long the note rings out after key-up',
-
-  // --- Synth: LFO / vibrato / pan ---
-  'synth-lfo.rate': 'LFO speed',
-  'synth-lfo.waveform': 'LFO shape',
-  'synth-lfo.destination': 'what the LFO modulates',
-  'synth-vibrato.mode': 'vibrato mode',
-  'synth.a-pan': 'pan of synth layer A — bipolar, 64 = center',
-  'synth.b-pan': 'pan of synth layer B — bipolar, 64 = center',
-  'synth.c-pan': 'pan of synth layer C — bipolar, 64 = center',
+  'global.pan': 'stereo position — bipolar, 64 = center',
+  'global.kbd-split': 'keyboard split / external-keyboard-to-LO / dual organ switch — verify states via readback',
 
   // --- Organ ---
-  'organ.model': 'organ engine/model selection',
-  'organ.percussion-enable': 'tonewheel percussion on/off',
-  'organ.percussion-harmonic': 'percussion harmonic (2nd vs 3rd)',
-  'organ.vibrato-enable': 'organ vibrato/chorus on/off',
+  'organ.enable': 'organ section on/off',
+  'organ.level': 'organ section volume',
+  'organ.octave-shift': 'organ octave transpose — bipolar, 64 = no shift',
+  'organ.model': 'organ engine: B3 tonewheel, Vox/Farf transistor, Pipe 1/2, B3 Bass',
+  'organ.preset': 'recalls an organ preset (drawbar+vibrato+percussion setup) within the current model',
+  'organ.drawbar-1': "drawbar 1 (B3: 16' sub-octave) — 0 = pushed in (silent), 127 = fully out (loud)",
+  'organ.drawbar-2': "drawbar 2 (B3: 5 1/3' quint) — 0 = in, 127 = out",
+  'organ.drawbar-3': "drawbar 3 (B3: 8' fundamental — the backbone of most registrations)",
+  'organ.drawbar-4': "drawbar 4 (B3: 4' octave)",
+  'organ.drawbar-5': "drawbar 5 (B3: 2 2/3' nazard)",
+  'organ.drawbar-6': "drawbar 6 (B3: 2' super-octave)",
+  'organ.drawbar-7': "drawbar 7 (B3: 1 3/5' tierce)",
+  'organ.drawbar-8': "drawbar 8 (B3: 1 1/3' larigot)",
+  'organ.drawbar-9': "drawbar 9 (B3: 1' sifflet — adds sparkle)",
+  'organ.percussion-enable': 'B3 percussion attack transient on/off (classic jazz/rock click)',
+  'organ.percussion-harmonic': 'percussion pitch: 2nd or 3rd harmonic',
+  'organ.percussion-speed': 'percussion decay: slow or fast',
+  'organ.percussion-level': 'percussion loudness: normal or soft',
+  'organ.vibrato-type': 'scanner vibrato/chorus: V1-V3 vibrato, C1-C3 chorus (C3 = classic full chorus)',
+  'organ.vibrato-enable': 'vibrato/chorus on/off',
+  'organ.edit-lower-manual': 'route panel edits to the lower manual (dual organ / split)',
 
   // --- Piano ---
-  'piano.type': 'piano category (grand, upright, EP, etc.)',
-  'piano.timbre': 'piano timbre/brightness variation',
-  'piano.dynamic-compression': 'dynamic range compression of the piano',
-  'piano.acoustics': 'string resonance / acoustic ambience amount',
+  'piano.enable': 'piano section on/off',
+  'piano.level': 'piano section volume',
+  'piano.octave-shift': 'piano octave transpose — bipolar, 64 = no shift',
+  'piano.type': 'piano category; the exact sound within it is chosen with piano.model',
+  'piano.model': 'model index within the current piano type (order as in the panel list / Sound Manager)',
+  'piano.variation': 'variation within the current model, where available',
+  'piano.eq': 'piano timbre filter (e.g. soft/mid/bright) — verify states via readback',
+
+  // --- Sample Synth ---
+  'sample-synth.enable': 'sample synth section on/off',
+  'sample-synth.level': 'sample synth volume',
+  'sample-synth.attack': 'sample envelope attack — 0 = instant, high = slow swell (pads)',
+  'sample-synth.decay-release': 'sample envelope decay/release — how long the sound rings out',
+  'sample-synth.dynamics': 'velocity response of the sample synth',
+  'sample-synth.filter': 'sample synth brightness filter — low = dark, high = open',
 
   // --- Effects ---
-  'delay.amount': 'delay wet/dry mix',
-  'delay.rate': 'delay time',
-  'delay.feedback': 'delay feedback — number of repeats',
-  'reverb.amount': 'reverb wet/dry mix',
-  'reverb.type': 'reverb size/character',
-  'compressor.amount': 'compression amount',
-  'amp-eq.drive': 'amp/EQ overdrive amount',
-  'rotary.speed': 'rotary speaker fast/slow',
+  'effect1.type': 'modulation effect 1: tremolo/pan intensities, wah, ring mod — verify values via readback',
+  'effect1.source': 'which engine effect 1 processes: Organ, Piano or Sample Synth',
+  'effect1.rate': 'effect 1 speed (wah: sweep position)',
+  'effect1.ctrl-pedal': 'let the control pedal drive effect 1 (pedal wah / trem amount)',
+  'effect2.type': 'modulation effect 2: phasers, flanger, vibe, choruses — verify values via readback',
+  'effect2.source': 'which engine effect 2 processes',
+  'effect2.rate': 'effect 2 speed',
+  'effect2.deep': 'deep mode — stronger modulation for the current effect 2',
+  'delay.amount': 'delay dry/wet balance',
+  'delay.rate': 'delay time (use panel tap-tempo for song sync)',
+  'delay.feedback': 'number of repeats',
+  'delay.ping-pong': 'repeats alternate left/right',
+  'delay.source': 'which engine the delay processes',
+  'amp.type': 'amp/speaker sim: JC solid-state, Small reed-piano tube, Twin tube, or Rotary speaker',
+  'amp.drive': 'overdrive amount (tube-style drive when no amp model selected)',
+  'amp.source': 'which engine the amp/speaker processes',
+  'rotary.speed': 'rotary speaker rotor speed: slow (chorale) / fast (tremolo)',
+  'eq.bass': 'EQ bass at 100 Hz — bipolar, 64 = flat, +/-15 dB',
+  'eq.mid': 'EQ mid — bipolar, 64 = flat',
+  'eq.mid-frequency': 'EQ mid center frequency, 200 Hz - 8 kHz',
+  'eq.treble': 'EQ treble at 4 kHz — bipolar, 64 = flat',
+  'eq.source': 'which engine the EQ processes',
+  'reverb.type': 'Room (short), Stage (medium), Hall (long) — verify values via readback',
+  'reverb.amount': 'reverb dry/wet',
+  'reverb.bright': 'preserve high frequencies in the reverb tail',
 };

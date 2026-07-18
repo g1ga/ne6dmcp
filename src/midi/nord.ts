@@ -7,7 +7,7 @@
  * relays inbound messages for state reconciliation.
  */
 
-import { buildCC, buildNRPN, buildNRPN14 } from './messages.js';
+import { buildCC, buildNRPN, buildNRPN14, buildProgramSelect } from './messages.js';
 import { MidiDevice, MidiMessageListener, PortInfo, RtMidiDevice } from './device.js';
 
 /** Default substring used to find the Nord's MIDI ports. */
@@ -23,14 +23,21 @@ export interface NordConfig {
 }
 
 export class NordMidi {
-  readonly device: MidiDevice;
+  private _device?: MidiDevice;
+  private readonly injected?: MidiDevice;
   readonly portMatch: string;
   /** 0-indexed channel (0-15) used on the wire. */
   readonly channel: number;
   private opened?: { input?: PortInfo; output?: PortInfo };
 
+  /** Lazily constructed so dry-run works without the native MIDI binding. */
+  get device(): MidiDevice {
+    if (!this._device) this._device = this.injected ?? new RtMidiDevice();
+    return this._device;
+  }
+
   constructor(config: NordConfig = {}) {
-    this.device = config.device ?? new RtMidiDevice();
+    this.injected = config.device;
     this.portMatch = config.portMatch ?? DEFAULT_PORT_MATCH;
     const ch = config.channel ?? 1;
     if (!Number.isInteger(ch) || ch < 1 || ch > 16) {
@@ -40,24 +47,36 @@ export class NordMidi {
   }
 
   open(): { input?: PortInfo; output?: PortInfo } {
-    this.opened = this.device.open(this.portMatch);
+    const first = !this._device;
+    const dev = this.device; // may lazily construct
+    if (first) {
+      for (const l of this.pendingMessageListeners) dev.onMessage(l);
+      for (const l of this.pendingDisconnectListeners) dev.onDisconnect(l);
+    }
+    this.opened = dev.open(this.portMatch);
     return this.opened;
   }
 
   close(): void {
-    this.device.close();
+    if (this._device) this._device.close();
   }
 
   isOpen(): boolean {
-    return this.device.isOpen();
+    return this._device ? this._device.isOpen() : false;
   }
 
+  private readonly pendingMessageListeners: MidiMessageListener[] = [];
+  private readonly pendingDisconnectListeners: Array<(reason: string) => void> = [];
+
+  /** Listener registration is buffered until the device is actually opened. */
   onMessage(listener: MidiMessageListener): void {
-    this.device.onMessage(listener);
+    this.pendingMessageListeners.push(listener);
+    if (this._device) this._device.onMessage(listener);
   }
 
   onDisconnect(listener: (reason: string) => void): void {
-    this.device.onDisconnect(listener);
+    this.pendingDisconnectListeners.push(listener);
+    if (this._device) this._device.onDisconnect(listener);
   }
 
   // --- The three send paths (Phase 1) ---
@@ -79,6 +98,18 @@ export class NordMidi {
   /** 14-bit NRPN (e.g. Sample category+sample: NRPN 3/4, MSB=category LSB=sample). */
   sendNRPN14(nrpnMsb: number, nrpnLsb: number, dataMsb: number, dataLsb: number): number[][] {
     const msgs = buildNRPN14(this.channel, nrpnMsb, nrpnLsb, dataMsb, dataLsb);
+    this.device.sendAll(msgs);
+    return msgs;
+  }
+
+  /**
+   * Recall content via Bank Select + Program Change (manual p. 26):
+   *   Bank MSB (CC0): 0 = Program, 3 = Piano, 4 = Sample, 6 = Live
+   *   Bank LSB (CC32): Program 0-3 (each LSB spans 8 banks), Piano 0-5, Sample 0-n, Live 0
+   *   Program Change: 0-127 (Program: bank A = 0-15, B = 16-31, ... H = 112-127)
+   */
+  selectProgram(bankMsb: number, bankLsb: number, program: number): number[][] {
+    const msgs = buildProgramSelect(this.channel, bankMsb, bankLsb, program);
     this.device.sendAll(msgs);
     return msgs;
   }

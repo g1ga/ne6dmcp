@@ -7,7 +7,18 @@
  * server without hardware attached.
  */
 
-import { Input, Output } from '@julusian/midi';
+import { createRequire } from 'node:module';
+import type { Input, Output } from '@julusian/midi';
+
+/**
+ * Load @julusian/midi lazily so the server (and dry-run / tests with a mock
+ * device) can start even when the native MIDI binding is unavailable. The
+ * import cost is paid only when real hardware I/O is first requested.
+ */
+function loadMidi(): { Input: new () => Input; Output: new () => Output } {
+  const require = createRequire(import.meta.url);
+  return require('@julusian/midi');
+}
 
 export interface PortInfo {
   index: number;
@@ -39,14 +50,17 @@ export function findPort(ports: PortInfo[], match: string): PortInfo | undefined
 }
 
 export class RtMidiDevice implements MidiDevice {
-  private readonly out = new Output();
-  private readonly in = new Input();
+  private readonly out: Output;
+  private readonly in: Input;
   private opened = false;
   private openedOutputName?: string;
   private readonly messageListeners: MidiMessageListener[] = [];
   private readonly disconnectListeners: DisconnectListener[] = [];
 
   constructor() {
+    const midi = loadMidi();
+    this.out = new midi.Output();
+    this.in = new midi.Input();
     // Receive everything except real-time clock spam; we DO want SysEx later.
     this.in.ignoreTypes(false, true, true);
     this.in.on('message', (deltaTime: number, message: number[]) => {

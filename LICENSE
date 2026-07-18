@@ -1,6 +1,7 @@
 MIT License
 
-Copyright (c) 2026 Gabriele Bulfon
+Copyright (c) 2026 Gabriele Bulfon (ns4mcp)
+Copyright (c) 2026 Luigi Bellanca (Nord Electro 6D adaptation)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +23,11 @@ SOFTWARE.
 
 ---
 
-Parameter data in src/schema/parameters.json is derived from the community
-midi.guide Nord Stage 4 database (https://midi.guide/d/nord/stage-4/) and is
-licensed separately under CC BY-SA 4.0. See README.md for attribution details.
+Parameter data in src/schema/parameters.json is transcribed from the official
+Nord Electro 6 User Manual (v2.6x Edition J), Appendix II: MIDI Controller List
+(https://www.nordkeyboards.com/downloads/downloads-nord-electro-6). CC numbers
+and parameter names are factual data; the transcription is covered by the MIT
+license above. See README.md for attribution details.
 
 "Nord" and "Nord Stage" are trademarks of Clavia DMI AB. This is an independent,
 unofficial project and is not affiliated with or endorsed by Clavia.

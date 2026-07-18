@@ -1,7 +1,7 @@
 /**
  * doctor — environment & device diagnostic.
  *
- * Lists all MIDI input/output ports and flags whether a Nord Stage 4 is visible.
+ * Lists all MIDI input/output ports and flags whether a Nord Electro 6D is visible.
  * Run before any feature work:  npm run doctor
  */
 
@@ -15,7 +15,7 @@ function header(title: string): void {
 
 function main(): void {
   const match = process.argv[2] ?? DEFAULT_PORT_MATCH;
-  console.log('NS4MCP doctor');
+  console.log('NE6DMCP doctor');
   console.log(`node ${process.version}  platform ${process.platform}/${process.arch}`);
 
   let device: RtMidiDevice;
@@ -48,14 +48,14 @@ function main(): void {
 
   console.log();
   if (out && inp) {
-    console.log('✓ Nord Stage 4 detected on both input and output. Ready for Phase 1 send tests.');
+    console.log('✓ Nord Electro 6D detected on both input and output. Ready for Phase 1 send tests.');
     process.exit(0);
   } else if (out || inp) {
     console.log('⚠ Nord detected on only one direction. Send tests work with output; readback needs input.');
     process.exit(0);
   } else {
     console.log('✗ Nord not detected. Check: USB connected, powered on, and MIDI USB enabled in System menu.');
-    console.log('  Pass a different name to match, e.g.:  npm run doctor -- "Stage 4"');
+    console.log('  Pass a different name to match, e.g.:  npm run doctor -- "Electro 6"');
     process.exit(1);
   }
 }

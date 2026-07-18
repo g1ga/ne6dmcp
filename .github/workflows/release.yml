@@ -92,12 +92,12 @@ jobs:
           mkdir -p installers/macos/resources
           cp LICENSE installers/macos/resources/LICENSE.txt
           pkgbuild --root bundle \
-            --identifier com.gabrielebulfon.ns4mcp \
+            --identifier com.gabrielebulfon.ne6dmcp \
             --version "$VERSION" \
-            --install-location /usr/local/ns4mcp \
+            --install-location /usr/local/ne6dmcp \
             --scripts installers/macos/scripts \
-            ns4mcp-component.pkg
-          PKG="NS4MCP-${VERSION}-macos-${ARCH}.pkg"
+            ne6dmcp-component.pkg
+          PKG="NE6DMCP-${VERSION}-macos-${ARCH}.pkg"
           productbuild --distribution installers/macos/distribution.xml \
             --package-path . \
             --resources installers/macos/resources \
@@ -174,7 +174,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: installer-macos-${{ matrix.arch }}
-          path: NS4MCP-*.pkg
+          path: NE6DMCP-*.pkg
           if-no-files-found: error
 
   windows:
@@ -203,12 +203,12 @@ jobs:
         shell: pwsh
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DNS4Version=$env:VERSION" "/DBundleDir=$((Resolve-Path bundle).Path)" installers\windows\ns4mcp.iss
+          & $iscc "/DNS4Version=$env:VERSION" "/DBundleDir=$((Resolve-Path bundle).Path)" installers\windows\ne6dmcp.iss
 
       - uses: actions/upload-artifact@v4
         with:
           name: installer-windows-x64
-          path: installers/windows/NS4MCP-*-setup.exe
+          path: installers/windows/NE6DMCP-*-setup.exe
           if-no-files-found: error
 
   linux:
@@ -232,7 +232,7 @@ jobs:
 
       - name: Package tarball
         run: |
-          STAGE="ns4mcp"
+          STAGE="ne6dmcp"
           rm -rf "$STAGE"
           mkdir -p "$STAGE"
           cp -R bundle/runtime bundle/app "$STAGE/"
@@ -241,12 +241,12 @@ jobs:
           cp LICENSE "$STAGE/" 2>/dev/null || true
           cp installers/linux/install.sh installers/linux/uninstall.sh "$STAGE/"
           chmod +x "$STAGE/install.sh" "$STAGE/uninstall.sh" "$STAGE/runtime/node"
-          tar -czf "NS4MCP-${VERSION}-linux-x64.tar.gz" "$STAGE"
+          tar -czf "NE6DMCP-${VERSION}-linux-x64.tar.gz" "$STAGE"
 
       - uses: actions/upload-artifact@v4
         with:
           name: installer-linux-x64
-          path: NS4MCP-*-linux-x64.tar.gz
+          path: NE6DMCP-*-linux-x64.tar.gz
           if-no-files-found: error
 
   release:
@@ -263,7 +263,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          name: NS4MCP ${{ needs.meta.outputs.version }}
+          name: NE6DMCP ${{ needs.meta.outputs.version }}
           files: artifacts/**/*
           generate_release_notes: true
           fail_on_unmatched_files: true

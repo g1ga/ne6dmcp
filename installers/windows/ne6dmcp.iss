@@ -1,7 +1,7 @@
-; Inno Setup script for NS4MCP — per-user install, bundles a portable Node
+; Inno Setup script for NE6DMCP — per-user install, bundles a portable Node
 ; runtime + the app, and configures Claude Desktop on install / cleans it on
 ; uninstall. Compiled in CI with:
-;   iscc /DNS4Version=x.y.z /DBundleDir=<path-to-bundle> installers\windows\ns4mcp.iss
+;   iscc /DNS4Version=x.y.z /DBundleDir=<path-to-bundle> installers\windows\ne6dmcp.iss
 ; The installer is UNSIGNED — users click through SmartScreen ("More info" ->
 ; "Run anyway"). This is documented in the README.
 
@@ -14,24 +14,24 @@
 
 [Setup]
 AppId={{B7E3F1A2-9C4D-4E6B-8A1F-2D5C7E9F0A33}
-AppName=NS4MCP — Nord Stage 4 for Claude
+AppName=NE6DMCP — Nord Electro 6D for Claude
 AppVersion={#NS4Version}
 AppPublisher=Gabriele Bulfon
-AppSupportURL=https://github.com/gbulfon/ns4mcp
-DefaultDirName={localappdata}\Programs\NS4MCP
+AppSupportURL=https://github.com/gbulfon/ne6dmcp
+DefaultDirName={localappdata}\Programs\NE6DMCP
 DisableProgramGroupPage=yes
 DisableDirPage=auto
 PrivilegesRequired=lowest
 OutputDir=.
-OutputBaseFilename=NS4MCP-{#NS4Version}-windows-x64-setup
+OutputBaseFilename=NE6DMCP-{#NS4Version}-windows-x64-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-UninstallDisplayName=NS4MCP — Nord Stage 4 for Claude
+UninstallDisplayName=NE6DMCP — Nord Electro 6D for Claude
 UninstallDisplayIcon={app}\runtime\node.exe
 
 [Messages]
-WelcomeLabel2=This installs the NS4MCP server (a portable Node runtime + the app) and adds it to your Claude Desktop configuration.%n%nAfter installing, quit and reopen Claude Desktop. Remember to enable NRPN on the Nord (MIDI menu, page 7).
+WelcomeLabel2=This installs the NE6DMCP server (a portable Node runtime + the app) and adds it to your Claude Desktop configuration.%n%nAfter installing, quit and reopen Claude Desktop. Remember to enable NRPN on the Nord (MIDI menu, page 7).
 
 [Files]
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion

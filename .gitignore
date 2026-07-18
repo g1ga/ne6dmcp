@@ -16,7 +16,7 @@ bundle/
 dist-bundle/
 *.pkg
 *-setup.exe
-NS4MCP-*.tar.gz
-ns4mcp-component.pkg
+NE6DMCP-*.tar.gz
+ne6dmcp-component.pkg
 installers/macos/resources/
 installers/windows/Output/

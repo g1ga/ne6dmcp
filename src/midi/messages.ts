@@ -49,7 +49,7 @@ export function buildCC(channel: number, controller: number, value: number): num
 /**
  * NRPN send path (Phase 1, path 2).
  *
- * Per the Nord Stage 4 manual (v1.2x Edition K, Appendix II, p.66, verbatim):
+ * Per the Nord Electro 6D manual (v1.2x Edition K, Appendix II, p.66, verbatim):
  *   "The first number corresponds to CC#99 (NRPN MSB) and the second to CC#98
  *    (NRPN LSB). The parameter value is defined by CC#38 (Data Entry LSB).
  *    Unless otherwise is specified, Data Entry MSB (CC#6) is expected to be 0.
@@ -105,5 +105,28 @@ export function buildNRPN14(
     controlChange(channel, CC.NRPN_LSB, nrpnLsb),
     controlChange(channel, CC.DATA_ENTRY_MSB, dataMsb),
     controlChange(channel, CC.DATA_ENTRY_LSB, dataLsb),
+  ];
+}
+
+const STATUS_PROGRAM_CHANGE = 0xc0; // Program Change, channel nibble OR'd in
+
+/** A single Program Change message: [status, program]. */
+export function programChange(channel: number, program: number): number[] {
+  assertChannel(channel);
+  assert7bit('program', program);
+  return [STATUS_PROGRAM_CHANGE | channel, program];
+}
+
+/**
+ * Nord Electro 6 content recall (manual p. 26, "Program Change"):
+ * Bank Select MSB (CC0) picks the content type (0 = Program, 3 = Piano,
+ * 4 = Sample, 6 = Live), Bank Select LSB (CC32) the bank group, then Program
+ * Change the slot. Sent as the standard three-message sequence.
+ */
+export function buildProgramSelect(channel: number, bankMsb: number, bankLsb: number, program: number): number[][] {
+  return [
+    controlChange(channel, 0, bankMsb),
+    controlChange(channel, 32, bankLsb),
+    programChange(channel, program),
   ];
 }

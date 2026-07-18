@@ -35,7 +35,7 @@ export class NordController {
     this.state = new PatchState(this.schema);
     this.nord = new NordMidi(opts);
     this.dryRun = opts.dryRun ?? false;
-    this.log = opts.log ?? ((m) => process.stderr.write(`[ns4mcp] ${m}\n`));
+    this.log = opts.log ?? ((m) => process.stderr.write(`[ne6dmcp] ${m}\n`));
 
     this.nord.onMessage((msg) => {
       const id = this.state.ingest(msg);
@@ -212,8 +212,21 @@ export class NordController {
     return { played: true, steps: done, totalMs: Math.round(elapsed), tempoBpm, truncated };
   }
 
+  /**
+   * Recall a Program/Live/Piano/Sample slot via Bank Select + Program Change.
+   * Live-only (there is no meaningful dry-run state for a program recall).
+   */
+  selectProgram(bankMsb: number, bankLsb: number, program: number): { sent: boolean; messages?: number[][]; reason?: string } {
+    const live = !this.dryRun && this.ensureConnected();
+    if (!live) return { sent: false, reason: this.dryRun ? 'dry-run' : `not connected (${this.lastError ?? 'unknown'})` };
+    const messages = this.nord.selectProgram(bankMsb, bankLsb, program);
+    return { sent: true, messages };
+  }
+
   close(): void {
-    try { this.nord.allNotesOff(); } catch { /* ignore */ }
+    if (this.connected) {
+      try { this.nord.allNotesOff(); } catch { /* ignore */ }
+    }
     this.nord.close();
   }
 }

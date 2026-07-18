@@ -1,6 +1,6 @@
 # Building the installers
 
-NS4MCP ships **zero-prerequisite installers** for macOS, Windows, and Linux. Each
+NE6DMCP ships **zero-prerequisite installers** for macOS, Windows, and Linux. Each
 one bundles a portable Node runtime + the built app + its production
 `node_modules` (with only the one matching `@julusian/midi` native prebuild), and
 auto-configures Claude Desktop. The end user installs nothing else.
@@ -14,13 +14,13 @@ workflow** button to build artifacts without releasing.
 ```
 installers/
   build-bundle.mjs      # download Node + assemble runtime/ + app/ for one OS/arch
-  configure-claude.mjs  # add/remove the nord-stage-4 entry in claude_desktop_config.json
+  configure-claude.mjs  # add/remove the nord-electro-6d entry in claude_desktop_config.json
   macos/
     distribution.xml    # productbuild UI + min-OS
     entitlements.plist  # hardened-runtime entitlements for the bundled node
     scripts/postinstall # runs as root; configures the console user's Claude config
-  windows/ns4mcp.iss    # Inno Setup (per-user install, unsigned)
-  linux/install.sh      # copy to ~/.local/share/ns4mcp + configure
+  windows/ne6dmcp.iss    # Inno Setup (per-user install, unsigned)
+  linux/install.sh      # copy to ~/.local/share/ne6dmcp + configure
   linux/uninstall.sh
 ```
 
@@ -52,17 +52,17 @@ pinned in `build-bundle.mjs` (`NODE_BUNDLE_VERSION`).
 
 ## Per-OS notes
 
-- **macOS** — built as a `.pkg`. `pkgbuild` lays the bundle into `/usr/local/ns4mcp`;
+- **macOS** — built as a `.pkg`. `pkgbuild` lays the bundle into `/usr/local/ne6dmcp`;
   the `postinstall` script finds the logged-in (console) user and runs the patcher
   as them, so the config is written to *their* home, not root's. Signed + notarized
   only when the secrets below are present; otherwise an **unsigned** `.pkg` is
   produced (still installable via right-click → Open).
 - **Windows** — Inno Setup `.exe`, **per-user** install to
-  `%LOCALAPPDATA%\Programs\NS4MCP` (no admin). **Unsigned** by design — users click
+  `%LOCALAPPDATA%\Programs\NE6DMCP` (no admin). **Unsigned** by design — users click
   through SmartScreen ("More info" → "Run anyway"). Uninstalling removes the Claude
   config entry.
 - **Linux** — `.tar.gz` containing the bundle + `install.sh`/`uninstall.sh`. Installs
-  to `~/.local/share/ns4mcp` (override with `NS4_INSTALL_DIR`). (Official Claude
+  to `~/.local/share/ne6dmcp` (override with `NE6_INSTALL_DIR`). (Official Claude
   Desktop is macOS/Windows; the Linux target is here for unofficial desktop builds.)
 
 ## macOS signing — required GitHub secrets
@@ -111,7 +111,7 @@ xcrun notarytool store-credentials ns4-notary \
   --apple-id gb@gabrielebulfon.com --team-id 62K8Y7Q23Q --password xxxx-xxxx-xxxx-xxxx
 
 # download the .pkg from the workflow run, then:
-installers/macos/notarize-staple.sh NS4MCP-<ver>-macos-arm64.pkg ns4-notary
+installers/macos/notarize-staple.sh NE6DMCP-<ver>-macos-arm64.pkg ns4-notary
 ```
 
 Check a stuck submission without re-submitting:

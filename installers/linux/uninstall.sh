@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# NS4MCP Linux uninstaller — removes the install dir and cleans the Claude config.
+# NE6DMCP Linux uninstaller — removes the install dir and cleans the Claude config.
 #
-#   ./uninstall.sh                       # removes ~/.local/share/ns4mcp
-#   NS4_INSTALL_DIR=/opt/ns4mcp ./uninstall.sh
+#   ./uninstall.sh                       # removes ~/.local/share/ne6dmcp
+#   NE6_INSTALL_DIR=/opt/ne6dmcp ./uninstall.sh
 set -euo pipefail
 
-DEST="${NS4_INSTALL_DIR:-$HOME/.local/share/ns4mcp}"
+DEST="${NE6_INSTALL_DIR:-$HOME/.local/share/ne6dmcp}"
 
 if [ ! -d "$DEST" ]; then
-  echo "NS4MCP is not installed at $DEST (set NS4_INSTALL_DIR if you used a custom path)."
+  echo "NE6DMCP is not installed at $DEST (set NE6_INSTALL_DIR if you used a custom path)."
   exit 0
 fi
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * configure-claude.mjs — add (or remove) the `nord-stage-4` MCP server entry in
+ * configure-claude.mjs — add (or remove) the `nord-electro-6d` MCP server entry in
  * the user's Claude Desktop config, pointing at the bundled Node runtime + app.
  *
  * Run by the BUNDLED node at install/uninstall time (so it always works, even on
@@ -22,7 +22,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir, platform } from 'node:os';
 
-const SERVER_KEY = 'nord-stage-4';
+const SERVER_KEY = 'nord-electro-6d';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
@@ -117,7 +117,7 @@ function main() {
   config.mcpServers[SERVER_KEY] = {
     command: nodeBin,
     args: [entry],
-    env: { NS4_CHANNEL: String(channel) },
+    env: { NE6_CHANNEL: String(channel) },
   };
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
@@ -125,7 +125,7 @@ function main() {
   console.log(`  config : ${configPath}`);
   console.log(`  server : ${SERVER_KEY} -> ${nodeBin} ${entry}`);
   if (saved) console.log(`  backup : ${saved}`);
-  console.log('\nDone. Quit and reopen Claude Desktop to load the Nord Stage 4 tools.');
+  console.log('\nDone. Quit and reopen Claude Desktop to load the Nord Electro 6D tools.');
 }
 
 try {
